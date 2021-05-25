@@ -121,8 +121,9 @@ class ExternalStorage(metaclass=abc.ABCMeta):
         keys = []
         offset = 0
         ray_object_pairs = self._get_objects_from_store(object_refs)
-        for ref, (buf, metadata), owner_address in zip(
-                object_refs, ray_object_pairs, owner_addresses):
+        for ref, (buf, metadata), owner_address in zip(object_refs,
+                                                       ray_object_pairs,
+                                                       owner_addresses):
             address_len = len(owner_address)
             metadata_len = len(metadata)
             buf_len = len(buf)
@@ -136,8 +137,9 @@ class ExternalStorage(metaclass=abc.ABCMeta):
             # TODO (yic): Considering add retry here to avoid transient issue
             try:
                 written_bytes = f.write(payload)
-                url_with_offset = create_url_with_offset(
-                    url=url, offset=offset, size=written_bytes)
+                url_with_offset = create_url_with_offset(url=url,
+                                                         offset=offset,
+                                                         size=written_bytes)
                 keys.append(url_with_offset.encode())
                 offset = f.tell()
             except IOError:
@@ -159,8 +161,8 @@ class ExternalStorage(metaclass=abc.ABCMeta):
             address_len + metadata_len + buffer_len +
             24 (first 8 bytes to store length).
         """
-        data_size_in_bytes = (
-            address_len + metadata_len + buffer_len + self.HEADER_LENGTH)
+        data_size_in_bytes = (address_len + metadata_len + buffer_len +
+                              self.HEADER_LENGTH)
         if data_size_in_bytes != obtained_data_size:
             raise ValueError(
                 f"Obtained data has a size of {data_size_in_bytes}, "
@@ -211,7 +213,6 @@ class ExternalStorage(metaclass=abc.ABCMeta):
 
 class NullStorage(ExternalStorage):
     """The class that represents an uninitialized external storage."""
-
     def spill_objects(self, object_refs, owner_addresses) -> List[str]:
         raise NotImplementedError("External storage is not initialized")
 
@@ -232,7 +233,6 @@ class FileSystemStorage(ExternalStorage):
         ValueError: Raises directory path to
             spill objects doesn't exist.
     """
-
     def __init__(self, directory_path):
         # -- sub directory name --
         self._spill_dir_name = DEFAULT_OBJECT_PREFIX
@@ -269,8 +269,8 @@ class FileSystemStorage(ExternalStorage):
         if len(object_refs) == 0:
             return []
         # Choose the current directory path by round robin order.
-        self._current_directory_index = (
-            (self._current_directory_index + 1) % len(self._directory_paths))
+        self._current_directory_index = ((self._current_directory_index + 1) %
+                                         len(self._directory_paths))
         directory_path = self._directory_paths[self._current_directory_index]
 
         # Always use the first object ref as a key when fusing objects.
@@ -354,7 +354,6 @@ class ExternalStorageSmartOpenImpl(ExternalStorage):
             For example, if smart open library
             is not downloaded, this will fail.
     """
-
     def __init__(self,
                  uri: str,
                  prefix: str = DEFAULT_OBJECT_PREFIX,
@@ -396,9 +395,8 @@ class ExternalStorageSmartOpenImpl(ExternalStorage):
         first_ref = object_refs[0]
         key = f"{self.prefix}-{first_ref.hex()}-multi-{len(object_refs)}"
         url = f"{self.uri}/{key}"
-        with open(
-                url, "wb",
-                transport_params=self.transport_params) as file_like:
+        with open(url, "wb",
+                  transport_params=self.transport_params) as file_like:
             return self._write_multiple_objects(file_like, object_refs,
                                                 owner_addresses, url)
 
@@ -415,9 +413,8 @@ class ExternalStorageSmartOpenImpl(ExternalStorage):
             base_url = parsed_result.base_url
             offset = parsed_result.offset
 
-            with open(
-                    base_url, "rb",
-                    transport_params=self.transport_params) as f:
+            with open(base_url, "rb",
+                      transport_params=self.transport_params) as f:
                 # smart open seek reads the file from offset-end_of_the_file
                 # when the seek is called.
                 f.seek(offset)
@@ -446,7 +443,6 @@ _external_storage = NullStorage()
 
 class UnstableFileStorage(FileSystemStorage):
     """This class is for testing with writing failure."""
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._failure_rate = 0.1
@@ -467,15 +463,14 @@ class UnstableFileStorage(FileSystemStorage):
 
 class SlowFileStorage(FileSystemStorage):
     """This class is for testing slow object spilling."""
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._min_delay = 1
         self._max_delay = 2
 
     def spill_objects(self, object_refs, owner_addresses) -> List[str]:
-        delay = random.random() * (
-            self._max_delay - self._min_delay) + self._min_delay
+        delay = random.random() * (self._max_delay -
+                                   self._min_delay) + self._min_delay
         time.sleep(delay)
         return super().spill_objects(object_refs, owner_addresses)
 
